@@ -1060,7 +1060,7 @@ void showAddress(bool init)
         case 1:
             if(deltaMs>dispTimeMs) // display digits long enough to see
             {
-                printDigit(digits[1], yellow1); // display second digit
+                printDigit(digits[1], green1); // display second digit
 
                 // prepare for next state
                 updateLedMs = newMs;
@@ -1072,7 +1072,7 @@ void showAddress(bool init)
         case 2:
             if(deltaMs>dispTimeMs) // display digits long enough to see
             {
-                printDigit(digits[0], green1); // display third digit
+                printDigit(digits[0], blue1); // display third digit
 
                 // prepare for next state
                 updateLedMs = newMs;
