@@ -20,26 +20,25 @@ __asm volatile ("nop");
 //      three PCB with no swap
 
 
-#if false // version for dev board with comm swap
+#if true // Devboard
 
-// pin 0 AKA DIP pin 5 is pulled too low by TinyISP, so program ATTiny out of its socket
-// this is the swapped comm and MAX pin definition
-#define LS_TX_PIN 2
-#define LS_RX_PIN 0
+// this is the unswapped comm and MAX pin definition
+#define LS_TX_PIN 3 // ?  // swap is 2
+#define LS_RX_PIN 4 // ?  // swap is 0
 
-// defines for LED driver
-#define SEGCLK 4    // unswap was 0 // Clock line to the MAX72xx
+#define SEGCLK 0    // Clock line to the MAX72xx
 #define SEGDIN 1    // Data-IN on the MAX72xx
-#define SEGLOAD 3   // unswap was 2 // LOAD-pin to MAX72xx
+#define SEGLOAD 2   // LOAD-pin to MAX72xx
 
 // Define how the RGB virtual displays are mapped to the MAX72xx digits
+// this accounts for both wiring and LED pinout changes
+#define BLUE 2
 #define RED 0
 #define GREEN 1
-#define BLUE 2
 #endif
 
 
-#if true // version for triple PCB with no swap
+#if false // version for triple PCB with no swap
 
 // this is the unswapped comm and MAX pin definition
 #define LS_TX_PIN 3 // ?  // swap is 2
