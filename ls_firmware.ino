@@ -79,9 +79,6 @@ SoftwareSerial mySerial(LS_RX_PIN, LS_TX_PIN); // RX, TX
 LedControl lc=LedControl(SEGDIN,SEGCLK,SEGLOAD,1);
 
 
-// TODO - seems to compile without this define
-#define LED_CONTROL
-
 #define WAIT 150
 
 
@@ -129,6 +126,7 @@ volatile bool modeChanged = true;
 void setup()
 {
     // disable watchdog - probably have only 15 ms, hope we can do this in time
+    int mcusr = MCUSR;
     MCUSR = 0;
     wdt_disable();
     
@@ -181,6 +179,11 @@ void setup()
 
     setInversion(0); // basically just reads EEPROM here
  
+   if ( ((mcusr & (1 << BORF)) !=0) )// Brownout detected!
+     {
+       dlog(0xFB);
+     }
+ 
     // initial operating mode
     mode = EEPROM.read(EE_PUP_MODE);
     if (0xFF == mode) // in case EEPROM hasn't been initialized
@@ -189,9 +192,16 @@ void setup()
           {
             mode = SHOW_ADDRESS;
           }
-        else
+        else // This tile is not production-ready, do something entertaining
           {
             mode = ROLLING_FADE_TEST;
+            if (mcusr != 0)    // A wild reset appears!
+              {
+                if ((mcusr & (1 << EXTRF)) != 0) // Physical reset
+                  mode = SHOW_FUSES;
+                if ((mcusr & (1 << WDRF)) !=0)  // Software reset
+                  mode = SHOW_ADDRESS;
+              }
           }
       }
     lastMode = mode;
