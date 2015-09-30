@@ -111,18 +111,6 @@ volatile uint8_t lastMode;
 volatile bool modeChanged = true;
 
 
-// Remove me - old code:
-// these seem to be defined in boot.h
-//#define GET_LOW_FUSE_BITS (0×0000)
-//#define GET_HIGH_FUSE_BITS (0×0003)
-//#define GET_LOCK_BITS (0×0001)
-//#define GET_EXTENDED_FUSE_BITS (0×0002)
-
-//#define _SPM_GET_LOW_FUSEBITS()  __AddrToZByteToSPMCR_LPM((char*)0x0000U, 0x09U)
-//#define _SPM_GET_HIGH_FUSEBITS()  __AddrToZByteToSPMCR_LPM((void __flash*)0x0003U, 0x09U)
-//#define _SPM_GET_EXTENDED_FUSEBITS()  __AddrToZByteToSPMCR_LPM((void __flash*)0x0002U, 0x09U)
-
-
 void setup()
 {
     // disable watchdog - probably have only 15 ms, hope we can do this in time
