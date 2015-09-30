@@ -26,6 +26,7 @@
 #define ROLLING_FADE_TEST 5  // fades in and out from inside to out
 #define ROLLING_FADE_TEST2 6  // fades in and out from inside to out
 #define SHOW_ADDRESS 7  // display serial address for floor setup
+#define SHOW_FUSES 8    // display the contents of the fuse bytes
 #define STOP_MODE   0xF // tile stops updating display
 
 // one byte commands for major actions

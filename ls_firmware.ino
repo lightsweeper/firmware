@@ -4,7 +4,7 @@
 #include "ls_wireAPI.h"
 #include <avr/wdt.h> // watchdog timer - just for reset
 //#include <avr/io.h> //header file for AVR Microcontroller
-//#include <avr/boot.h>
+#include <avr/boot.h>
 
 // BOF preprocessor bug prevent - insert me on top of your arduino-code
 // From: http://www.a-control.de/arduino-fehler/?lang=en
@@ -14,13 +14,11 @@ __asm volatile ("nop");
 
 // TODO - move this section to HW specific header file
 // possible versions:
-//      original dev board
-//      dev board with comm swap
-//      three PCB with comm swap
 //      three PCB with no swap
+//      Modern devboard
 
 
-#if true // Devboard
+#if true // Modern devboard
 
 // this is the unswapped comm and MAX pin definition
 #define LS_TX_PIN 3 // ?  // swap is 2
@@ -55,7 +53,6 @@ __asm volatile ("nop");
 #define GREEN 2
 #endif
 
-// end of move this section
 
 // returned by TILE_VERSION query - keep old version history here 
 const unsigned char tileVersion[2] = {0,4}; // queries do not stop display, safe EEPROM write, set random address
@@ -78,7 +75,7 @@ const unsigned char tileVersion[2] = {0,4}; // queries do not stop display, safe
 
 SoftwareSerial mySerial(LS_RX_PIN, LS_TX_PIN); // RX, TX
 
-#define TRIGGER 4 // Velostat pressure sensor
+#define SENSOR_PIN 0 // Pressure sensor
 LedControl lc=LedControl(SEGDIN,SEGCLK,SEGLOAD,1);
 
 
@@ -116,15 +113,17 @@ volatile uint8_t mode;
 volatile uint8_t lastMode;
 volatile bool modeChanged = true;
 
+
+// Remove me - old code:
 // these seem to be defined in boot.h
 //#define GET_LOW_FUSE_BITS (0×0000)
 //#define GET_HIGH_FUSE_BITS (0×0003)
 //#define GET_LOCK_BITS (0×0001)
 //#define GET_EXTENDED_FUSE_BITS (0×0002)
 
-#define _SPM_GET_LOW_FUSEBITS()  __AddrToZByteToSPMCR_LPM((char*)0x0000U, 0x09U)
-#define _SPM_GET_HIGH_FUSEBITS()  __AddrToZByteToSPMCR_LPM((void __flash*)0x0003U, 0x09U)
-#define _SPM_GET_EXTENDED_FUSEBITS()  __AddrToZByteToSPMCR_LPM((void __flash*)0x0002U, 0x09U)
+//#define _SPM_GET_LOW_FUSEBITS()  __AddrToZByteToSPMCR_LPM((char*)0x0000U, 0x09U)
+//#define _SPM_GET_HIGH_FUSEBITS()  __AddrToZByteToSPMCR_LPM((void __flash*)0x0003U, 0x09U)
+//#define _SPM_GET_EXTENDED_FUSEBITS()  __AddrToZByteToSPMCR_LPM((void __flash*)0x0002U, 0x09U)
 
 
 void setup()
@@ -132,7 +131,14 @@ void setup()
     // disable watchdog - probably have only 15 ms, hope we can do this in time
     MCUSR = 0;
     wdt_disable();
-
+    
+    // Read the high fuse bits
+    uint8_t highFuse;
+    
+    cli();
+    highFuse = boot_lock_fuse_bits_get(GET_HIGH_FUSE_BITS);
+    sei();
+    
     // Wait and hope the power is done glitching, may make setup more robust
     // There was correlation between experimental power glitches and
     // trashing of tile address in EEPROM
@@ -142,20 +148,6 @@ void setup()
     delay(delayMs);
     // TODO - maybe 200 code bytes for first delay()?
     // TODO - use alternate delay with updateLedMs and millis()
-
-// http://embeddedgurus.com/stack-overflow/2009/05/checking-the-fuse-bits-in-an-atmel-avr-at-run-time/
-    //char fuse_low = _SPM_GET_LOW_FUSEBITS();
-
-    //int high,low, lock,ext;
-    //_delay_ms(1); //DELAY to complete operation
-    //high=boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS);
-    //_delay_ms(1);
-    //low=boot_lock_fuse_bits_get(GET_HIGH_FUSE_BITS);
-    //_delay_ms(1);
-    //lock=boot_lock_fuse_bits_get(GET_LOCK_BITS);
-    //_delay_ms(1);
-    //ext=boot_lock_fuse_bits_get(GET_EXTENDED_FUSE_BITS);
-    //_delay_ms(1);
     
     // Wake up the virtual displays
     lc.shutdown(RED, false);
@@ -181,20 +173,27 @@ void setup()
         debugFlag = 0;
 
     // REMOVEME - or use dlog only
-    mySerial.write(get_free_memory());
+    //mySerial.write(get_free_memory());
 
     busAddress = EEPROM.read(EE_ADDR);
-    mySerial.write(busAddress); // greet with address
-    //sendOutput(busAddress); // greet with address
     busAddress = busAddress & 0xf8; // mask helps when EEPROM has bad address write
+    mySerial.write(busAddress); // greet with address
 
     setInversion(0); // basically just reads EEPROM here
-
+ 
     // initial operating mode
     mode = EEPROM.read(EE_PUP_MODE);
     if (0xFF == mode) // in case EEPROM hasn't been initialized
-        mode = SHOW_ADDRESS; // ROLLING_FADE_TEST;
-    //mode = SENSOR_TEST; // HACK TEMP
+      {
+        if ((highFuse & 128) == 0)  // RSTDISBL fuse is set, so default to showing address
+          {
+            mode = SHOW_ADDRESS;
+          }
+        else
+          {
+            mode = ROLLING_FADE_TEST;
+          }
+      }
     lastMode = mode;
 }
 
@@ -283,10 +282,14 @@ void loop()
             break;
 
         case FASTEST_TEST:
-            // TODO - does not fit?
-            //colorcounter();
             fastestTestMode(needInit);
             break;
+            
+        // TODO - does not fit?
+     // case COLOR_COUNTER_DEMO:
+            //colorcounter();
+            //break;
+            
 
         case ROLLING_FADE_TEST:
             activeSegs[0] = 0x5B;
@@ -299,6 +302,9 @@ void loop()
             activeSegs[0] = activeSegs[1] = activeSegs[2] = 0x6E; // different
             rollingEffect(needInit);
             break;
+            
+        case SHOW_FUSES:
+            showFuses(needInit);
             
         case SHOW_ADDRESS:
             showAddress(needInit);
@@ -418,12 +424,7 @@ void loop()
             // do nothing here
             mode = lastMode; // better to change nothing than to stop and do nothing
             break;
-
-#if false
-        case COLOR_RAMP:
-            colorRampTestMode(needInit);
-            break;
-#endif
+            
         case ERROR_CMD:
         case CLEAR_ERRORS:
         case RETURN_ERRORS:
@@ -1023,23 +1024,12 @@ void colorRampTestMode(bool init)
     delay(5); // little delay
 }
 
-
-// display serial address for floor setup - runs forever
-void showAddress(bool init)
+void reportValue(int val)
 {
-    unsigned long newMs = millis();
-
-    if(init)
-    {
-        updateLedMs = newMs;
-        updateLedState = 0;
-        dlog(0xB0);
-    }
-
-    unsigned long deltaMs = newMs - updateLedMs;
+ unsigned long newMs = millis();
+ unsigned long deltaMs = newMs - updateLedMs;
 
     // split address into array of digits, LSD first
-    int val = busAddress;
     char digits[3];
     splitInt(val, 3, digits);
     const unsigned long dispTimeMs = 2000;
@@ -1104,7 +1094,48 @@ void showAddress(bool init)
                 updateLedState = 0; // done here
             }
             break;
+    } 
+  
+}
+
+
+// display serial address for floor setup - runs forever
+void showAddress(bool init)
+{
+    unsigned long newMs = millis();
+
+    if(init)
+    {
+        updateLedMs = newMs;
+        updateLedState = 0;
+        dlog(0xB0);
     }
+
+    reportValue(busAddress);
+    
+}
+
+// display serial address for floor setup - runs forever
+void showFuses(bool init)
+{
+    unsigned long newMs = millis();
+
+    if(init)
+    {
+        updateLedMs = newMs;
+        updateLedState = 0;
+        dlog(0xB0);
+    }
+    
+    uint8_t lowFuse, highFuse, extFuse;
+    
+    cli();
+    lowFuse = boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS);
+    highFuse = boot_lock_fuse_bits_get(GET_HIGH_FUSE_BITS);
+    extFuse = boot_lock_fuse_bits_get(GET_EXTENDED_FUSE_BITS);
+    sei();
+    
+    reportValue(highFuse);
 }
 
 
@@ -1144,7 +1175,7 @@ void getAdcStat(char stat)
 bool smoothread(int smoothing, int* avgAdc)
 {
     bool done = false;
-    int inputPin = 0; //TRIGGER;
+    int inputPin = SENSOR_PIN;
     static unsigned char adcTimerInit;  // static to control ADC state machine
 
     static int total = 0;               // the running total
