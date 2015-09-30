@@ -290,10 +290,12 @@ void loop()
         case SEGMENT_TEST:
             segmentTestMode(needInit);
             break;
-
+            
+#if false
         case FASTEST_TEST:
             fastestTestMode(needInit);
             break;
+#endif
             
         // TODO - does not fit?
      // case COLOR_COUNTER_DEMO:
@@ -308,10 +310,12 @@ void loop()
             rollingEffect(needInit);
             break;
             
-        case ROLLING_FADE_TEST2:
+ #if false
+       case ROLLING_FADE_TEST2:
             activeSegs[0] = activeSegs[1] = activeSegs[2] = 0x6E; // different
             rollingEffect(needInit);
             break;
+#endif
             
         case SHOW_FUSES:
             showFuses(needInit);
